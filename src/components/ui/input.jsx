@@ -15,8 +15,7 @@ const Input = React.forwardRef(({
         className
       )}
       ref={ref}
-      {...props}
-    />
+      {...props} />
   )
 })
 Input.displayName = "Input"
