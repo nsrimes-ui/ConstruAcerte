@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import Layout from './components/Layout.jsx';
-import Dashboard from './components/Dashboard.jsx';
-import Projects from './components/Projects.jsx';
-import './App.css';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import Layout from '@/components/Layout';
+import Dashboard from '@/components/Dashboard';
+import Projects from '@/components/Projects';
+import UserProfile from '@/components/UserProfile';
+import './index.css'; // Importe o CSS global aqui
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -14,22 +19,45 @@ function App() {
       case 'projects':
         return <Projects />;
       case 'tasks':
-        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Tarefas</h2><p>Em desenvolvimento...</p></div>;
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-4">Tarefas</h2>
+            <p className="text-muted-foreground">Módulo de tarefas em desenvolvimento</p>
+          </div>
+        );
       case 'calendar':
-        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Calendário</h2><p>Em desenvolvimento...</p></div>;
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-4">Calendário</h2>
+            <p className="text-muted-foreground">Módulo de calendário em desenvolvimento</p>
+          </div>
+        );
       case 'reports':
-        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Relatórios</h2><p>Em desenvolvimento...</p></div>;
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-4">Relatórios</h2>
+            <p className="text-muted-foreground">Módulo de relatórios em desenvolvimento</p>
+          </div>
+        );
       case 'settings':
-        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Configurações</h2><p>Em desenvolvimento...</p></div>;
+        return <UserProfile />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-      {renderPage()}
-    </Layout>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ProtectedRoute>
+            <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+              {renderPage()}
+            </Layout>
+          </ProtectedRoute>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 
