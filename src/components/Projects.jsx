@@ -1,272 +1,320 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
-import { Button } from '@/components/ui/button.jsx';
-import { Progress } from '@/components/ui/progress.jsx';
-import { Badge } from '@/components/ui/badge.jsx';
-import { Input } from '@/components/ui/input.jsx';
-import {
-  Building2,
-  Plus,
-  Search,
-  MapPin,
-  Calendar,
-  Users,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2
-} from 'lucide-react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { PlusCircle, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getUserProjects, saveUserProjects } from '@/utils/demoDataSetup';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
-
-const Projects = ( ) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const Projects = () => {
+  const { user } = useAuth();
+  const { t } = useLanguage();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentProject, setCurrentProject] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    status: 'planning',
+    progress: 0,
+    budget: 0,
+    location: ''
+  });
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/projects`);
-        setProjects(response.data.projects);
-      } catch (err) {
-        setError('Erro ao carregar projetos: ' + err.message);
-        console.error('Erro ao carregar projetos:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (user) {
+      setLoading(true);
+      const userProjects = getUserProjects(user.id);
+      setProjects(userProjects);
+      setLoading(false);
+    }
+  }, [user]);
 
-    fetchProjects();
-  }, []);
-
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      'planning': { label: 'Planejamento', variant: 'secondary', color: 'bg-gray-100 text-gray-800' },
-      'in_progress': { label: 'Em Progresso', variant: 'default', color: 'bg-blue-100 text-blue-800' },
-      'completed': { label: 'Concluído', variant: 'success', color: 'bg-green-100 text-green-800' },
-      'on_hold': { label: 'Pausado', variant: 'warning', color: 'bg-yellow-100 text-yellow-800' }
-    };
-    
-    const statusInfo = statusMap[status] || { label: status, variant: 'secondary', color: 'bg-gray-100 text-gray-800' };
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
-        {statusInfo.label}
-      </span>
-    );
+  const handleSaveProjects = (updatedProjects) => {
+    setProjects(updatedProjects);
+    saveUserProjects(user.id, updatedProjects);
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const handleNewProjectClick = () => {
+    setCurrentProject(null);
+    setFormData({
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      status: 'planning',
+      progress: 0,
+      budget: 0,
+      location: ''
+    });
+    setIsModalOpen(true);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const handleEditProjectClick = (project) => {
+    setCurrentProject(project);
+    setFormData({
+      name: project.name,
+      description: project.description,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      status: project.status,
+      progress: project.progress,
+      budget: project.budget,
+      location: project.location
+    });
+    setIsModalOpen(true);
   };
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.client_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDeleteProject = (projectId) => {
+    if (window.confirm('Tem certeza que deseja excluir este projeto?')) {
+      const updatedProjects = projects.filter(p => p.id !== projectId);
+      handleSaveProjects(updatedProjects);
+    }
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleStatusChange = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      status: value
+    }));
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!formData.name || !formData.startDate || !formData.endDate) {
+      setError('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    if (new Date(formData.startDate) > new Date(formData.endDate)) {
+      setError('A data de início não pode ser posterior à data de término.');
+      return;
+    }
+
+    if (currentProject) {
+      // Editar projeto existente
+      const updatedProjects = projects.map(p =>
+        p.id === currentProject.id ? { ...p, ...formData } : p
+      );
+      handleSaveProjects(updatedProjects);
+    } else {
+      // Adicionar novo projeto
+      const newProject = {
+        id: String(Date.now()),
+        userId: user.id,
+        ...formData,
+        createdAt: new Date().toISOString()
+      };
+      handleSaveProjects([...projects, newProject]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'planning': return t('planning');
+      case 'inProgress': return t('inProgress');
+      case 'completed': return t('completed');
+      case 'onHold': return t('onHold');
+      default: return status;
+    }
+  };
 
   if (loading) {
-    return <div className="text-center py-12">Carregando projetos...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-12 text-red-600">{error}</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="ml-2">{t('loading')}</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Projetos</h1>
-          <p className="text-gray-600">Gerencie todos os seus projetos de construção</p>
-        </div>
-        <Button className="bg-orange-500 hover:bg-orange-600">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Projeto
+        <h1 className="text-3xl font-bold tracking-tight">{t('projects')}</h1>
+        <Button onClick={handleNewProjectClick}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          {t('newProject')}
         </Button>
       </div>
 
-      {/* Filtros e busca */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Buscar projetos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {projects.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">{t('noProjects')}</p>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm">Todos</Button>
-          <Button variant="outline" size="sm">Em Progresso</Button>
-          <Button variant="outline" size="sm">Concluídos</Button>
-          <Button variant="outline" size="sm">Pausados</Button>
-        </div>
-      </div>
-
-      {/* Estatísticas rápidas */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center">
-              <Building2 className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl font-bold">{projects.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="h-4 w-4 bg-blue-500 rounded-full"></div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Em Progresso</p>
-                <p className="text-2xl font-bold">
-                  {projects.filter(p => p.status === 'in_progress').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="h-4 w-4 bg-green-500 rounded-full"></div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Concluídos</p>
-                <p className="text-2xl font-bold">
-                  {projects.filter(p => p.status === 'completed').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                <div className="h-4 w-4 bg-yellow-500 rounded-full"></div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pausados</p>
-                <p className="text-2xl font-bold">
-                  {projects.filter(p => p.status === 'on_hold').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lista de projetos */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {filteredProjects.length > 0 ? (
-          filteredProjects.map((project) => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow">
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {projects.map(project => (
+            <Card key={project.id}>
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{project.name}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {project.description}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {getStatusBadge(project.status)}
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <CardTitle>{project.name}</CardTitle>
+                <CardDescription>{project.description}</CardDescription>
               </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {/* Progresso */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Progresso</span>
-                    <span className="font-medium">{project.progress}%</span>
-                  </div>
-                  <Progress value={project.progress} className="h-2" />
-                </div>
-
-                {/* Informações do projeto */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center text-gray-600">
-                    <MapPin className="mr-2 h-4 w-4" />
-                    {project.location}
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Users className="mr-2 h-4 w-4" />
-                    {project.team_members} membros
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {formatDate(project.start_date)}
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Building2 className="mr-2 h-4 w-4" />
-                    {formatCurrency(project.budget)}
-                  </div>
-                </div>
-
-                {/* Cliente */}
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-gray-600">Cliente</p>
-                  <p className="font-medium">{project.client_name}</p>
-                </div>
-
-                {/* Ações */}
-                <div className="flex space-x-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Visualizar
+              <CardContent className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">{t('startDate')}:</span> {project.startDate}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">{t('endDate')}:</span> {project.endDate}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">{t('status')}:</span> {getStatusLabel(project.status)}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">{t('progress')}:</span> {project.progress}%
+                </p>
+                <div className="flex space-x-2 mt-4">
+                  <Button variant="outline" size="sm" onClick={() => handleEditProjectClick(project)}>
+                    <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteProject(project.id)}>
+                    <Trash2 className="h-4 w-4" />
                   </Button>
+                  {/* <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button> */}
                 </div>
               </CardContent>
             </Card>
-          ))
-        ) : (
-          <div className="text-center py-12 col-span-full">
-            <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum projeto encontrado</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Tente ajustar os filtros ou criar um novo projeto.
-            </p>
-            <div className="mt-6">
-              <Button className="bg-orange-500 hover:bg-orange-600">
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Projeto
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle>{currentProject ? t('editProject') : t('newProject')}</CardTitle>
+              <CardDescription>Preencha os detalhes do projeto.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <form onSubmit={handleFormSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{t('projectName')}</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">{t('startDate')}</Label>
+                    <Input
+                      id="startDate"
+                      name="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">{t('endDate')}</Label>
+                    <Input
+                      id="endDate"
+                      name="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">{t('status')}</Label>
+                  <Select onValueChange={handleStatusChange} value={formData.status}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planning">{t('planning')}</SelectItem>
+                      <SelectItem value="inProgress">{t('inProgress')}</SelectItem>
+                      <SelectItem value="completed">{t('completed')}</SelectItem>
+                      <SelectItem value="onHold">{t('onHold')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="progress">{t('progress')}</Label>
+                  <Input
+                    id="progress"
+                    name="progress"
+                    type="number"
+                    value={formData.progress}
+                    onChange={handleFormChange}
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget">Orçamento</Label>
+                  <Input
+                    id="budget"
+                    name="budget"
+                    type="number"
+                    value={formData.budget}
+                    onChange={handleFormChange}
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Localização</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                    {t('cancel')}
+                  </Button>
+                  <Button type="submit">
+                    {t('save')}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
