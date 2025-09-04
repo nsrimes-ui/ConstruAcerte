@@ -47,5 +47,3 @@ export {
   AvatarImage,
   AvatarFallback
 }
-
-export { Avatar, AvatarImage, AvatarFallback }
