@@ -6,8 +6,9 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Layout from '@/components/Layout';
 import Dashboard from '@/components/Dashboard';
 import Projects from '@/components/Projects';
+import TasksGantt from '@/components/TasksGantt';
 import UserProfile from '@/components/UserProfile';
-import './index.css'; // Importe o CSS global aqui
+import './index.css';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -19,12 +20,7 @@ function App() {
       case 'projects':
         return <Projects />;
       case 'tasks':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Tarefas</h2>
-            <p className="text-muted-foreground">Módulo de tarefas em desenvolvimento</p>
-          </div>
-        );
+        return <TasksGantt />;
       case 'calendar':
         return (
           <div className="text-center py-12">
