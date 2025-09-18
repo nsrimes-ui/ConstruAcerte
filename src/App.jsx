@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
-import { AuthProvider } from '@/contexts/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import Layout from '@/components/Layout';
-import Dashboard from '@/components/Dashboard';
-import Projects from '@/components/Projects';
-import TasksGantt from '@/components/TasksGantt';
-import UserProfile from '@/components/UserProfile';
-import './index.css';
+import Layout from './components/Layout.jsx';
+import Dashboard from './components/Dashboard.jsx';
+import Projects from './components/Projects.jsx';
+import Reports from './components/Reports.jsx';
+import NonConformities from './components/NonConformities.jsx';
+import PurchaseOrders from './components/PurchaseOrders.jsx';
+import './App.css';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -20,40 +17,26 @@ function App() {
       case 'projects':
         return <Projects />;
       case 'tasks':
-        return <TasksGantt />;
+        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Tarefas</h2><p>Em desenvolvimento...</p></div>;
       case 'calendar':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Calendário</h2>
-            <p className="text-muted-foreground">Módulo de calendário em desenvolvimento</p>
-          </div>
-        );
+        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Calendário</h2><p>Em desenvolvimento...</p></div>;
       case 'reports':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Relatórios</h2>
-            <p className="text-muted-foreground">Módulo de relatórios em desenvolvimento</p>
-          </div>
-        );
+        return <Reports />;
+      case 'nonconformities':
+        return <NonConformities />;
+      case 'purchaseorders':
+        return <PurchaseOrders />;
       case 'settings':
-        return <UserProfile />;
+        return <div className="p-8 text-center"><h2 className="text-2xl font-bold">Configurações</h2><p>Em desenvolvimento...</p></div>;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <ProtectedRoute>
-            <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-              {renderPage()}
-            </Layout>
-          </ProtectedRoute>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+      {renderPage()}
+    </Layout>
   );
 }
 
